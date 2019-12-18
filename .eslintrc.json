@@ -1,0 +1,7 @@
+{
+  "extends": ["airbnb-base"],
+  "rules": {
+    "comma-dangle": "off",
+    "no-unused-vars": ["error", {"args": "none"}]
+  }
+}

@@ -1,0 +1,106 @@
+.stock {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #a5a5a5;
+  padding: 10px 20px 10px 10px;
+  transition: 0.5s;
+
+  &__title {
+    margin-right: 20px;
+    font-size: 15px;
+    margin-bottom: 5px;
+  }
+
+  &__price {
+    font-size: 15px;
+    margin-bottom: 5px;
+  }
+
+  &__img-container {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    margin-right: 20px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    background: white;
+  }
+
+  &__img {
+    width: 100%;
+  }
+
+  &_color_red {
+    background: rgba(255, 0, 0, 0.45);
+  }
+
+  &_color_green {
+    background: #238952;
+  }
+
+  &__content-box {
+    width: 100%;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__date {
+    font-size: 11px;
+  }
+
+  &__column {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__right {
+    text-align: right;
+  }
+
+  &__changes-box {
+    display: flex;
+    align-items: center;
+    font-size: 10px;
+  }
+
+  &__caret {
+    display: none;
+    margin-right: 5px;
+  }
+
+  &__caret.up {
+    transform: rotate(180deg);
+  }
+
+  &__changes {
+    font-weight: bold;
+    margin-right: 5px;
+  }
+
+  &__percentage {
+    font-weight: bold;
+  }
+}
+
+.stock:hover {
+  padding: 15px 20px 15px 15px;
+}
+
+.up {
+  display: inherit;
+  fill: #238952;
+  color: #238952;
+}
+
+.down {
+  display: inherit;
+  fill: rgb(181, 0, 0);
+  color: rgb(181, 0, 0);
+}
+

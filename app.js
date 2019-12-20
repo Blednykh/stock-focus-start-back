@@ -8,6 +8,7 @@ const app = express();
 const userStocksRotues = require('./routes/userStocks');
 const stocksRotues = require('./routes/stocks');
 const transactionsRotues = require('./routes/transactions');
+const usersRotues = require('./routes/users');
 
 async function apiRequest(url) {
   const data = await axios.get(url);
@@ -29,10 +30,9 @@ async function getStocksFromApi() {
   newData.parts = [];
   for (let i = 0; i < newData.stockList.length; i += 25) {
     newData.parts.push(newData.stockList.slice(i, i + 25));
-
   }
   newData.parts.forEach((part, number) => {
-    const timeoutFunction = (timeoutPart) =>{
+    const timeoutFunction = (timeoutPart) => {
       Promise.all(timeoutPart.map(({ symbol }, id) => getStockProfile(symbol)))
         .then((res) => {
           res.forEach((resItem, id) => {
@@ -65,29 +65,11 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   next();
 });
-/*app.use(morgan('combined'));*/
-app.use('/', (req, res, next) => {
-  console.log(req.headers);
-  next();
-});
 app.use(bodyParser.json());
 app.use('/userstocks', userStocksRotues);
-app.use((err, req, res, next) => {
-  const { message } = err;
-  res.json({
-    status: 'ERROR',
-    message
-  });
-});
 app.use('/stocks', stocksRotues);
-app.use((err, req, res, next) => {
-  const { message } = err;
-  res.json({
-    status: 'ERROR',
-    message
-  });
-});
 app.use('/transactions', transactionsRotues);
+app.use('/users', usersRotues);
 app.use((err, req, res, next) => {
   const { message } = err;
   res.json({

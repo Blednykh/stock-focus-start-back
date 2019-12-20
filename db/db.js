@@ -6,8 +6,7 @@ const db = low(adapter);
 
 db.defaults({
   stocks: [],
-  userStocks: [],
-  transactionHistory: []
+  users: []
 })
   .write();
 

@@ -1,23 +1,45 @@
 const express = require('express');
 const { validate } = require('jsonschema');
-const shortid = require('shortid');
 const db = require('../db/db');
 const router = express.Router();
-const axios = require('axios');
 
 
 router.get('/', (req, res, next) => {
-  const { offset, name } = req.query;
+
+  const { offset, name, userId } = req.query;
   let stocks;
+  let user = db.get('users')
+    .find((item) => item.id === userId);
   if (!name || name === '') {
-    stocks = db.get('userStocks')
+    stocks = user.value()
+      .stocks
       .filter((item, id) => id >= offset && id < Number(offset) + 10);
   } else {
-    stocks = db.get('userStocks')
-      .filter((stock) => stock.symbol.toLowerCase().indexOf(name.toLowerCase()) !== -1 ||
-        stock.profile.companyName.toLowerCase().indexOf(name.toLowerCase()) !== -1)
+    stocks = user.value()
+      .stocks
+      .filter((stock) => stock.symbol.toLowerCase()
+          .indexOf(name.toLowerCase()) !== -1 ||
+        stock.profile.companyName.toLowerCase()
+          .indexOf(name.toLowerCase()) !== -1)
       .filter((item, id) => id >= offset && id < Number(offset) + 10);
   }
+  stocks = stocks.map((item) => {
+    const stock = db.get('stocks')
+      .find((stocksItem) => stocksItem.symbol === item.symbol)
+      .value().profile;
+
+    return {
+      ...item,
+      profile: {
+        companyName: stock.companyName,
+        image: stock.image,
+        description: stock.description,
+        changes: stock.changes,
+        changesPercentage: stock.changesPercentage,
+        price: stock.price
+      }
+    };
+  });
   res.json({
     status: 'OK',
     data: stocks
@@ -26,8 +48,25 @@ router.get('/', (req, res, next) => {
 
 
 router.get('/:id', (req, res, next) => {
+  const { userId } = req.query;
   const { id } = req.params;
-  const data = db.get('userStocks').find((stock) => String(stock.symbol) === id);
+  const user = db.get('users')
+    .find((item) => item.id === userId);
+  let data = user.value()
+    .stocks
+    .find((stock) => String(stock.symbol) === id);
+
+  const stock = db.get('stocks')
+    .find((stocksItem) => stocksItem.symbol === data.symbol)
+    .value().profile;
+  data.profile = {
+    companyName: stock.companyName,
+    image: stock.image,
+    description: stock.description,
+    changes: stock.changes,
+    changesPercentage: stock.changesPercentage,
+    price: stock.price
+  };
   res.json({
     status: 'OK',
     data: data
@@ -42,9 +81,10 @@ router.post('/', (req, res, next) => {
       symbol: { type: 'string' },
       count: { type: 'number' },
       price: { type: 'number' },
-      type: { type: 'string' }
+      type: { type: 'string' },
+      userId: { type: 'string' }
     },
-    required: ['symbol', 'count', 'price', 'type'],
+    required: ['symbol', 'count', 'price', 'type', 'userId'],
     additionalProperties: false
   };
 
@@ -53,45 +93,45 @@ router.post('/', (req, res, next) => {
     return next(new Error('INVALID_JSON_OR_API_FORMAT'));
   }
 
-  /* const id = shortid.generate();*/
-  /* let stock = db.get('stocks').value();
-   console.log("stock", stock);
-   let stockIndex = stock.findIndex(item=>{
-     String(item.id) === body.id;
-   });*/
-  const stock = db.get('userStocks')
-    .find((item) => String(item.symbol) === body.symbol);
-  const stockValue = stock.value();
-  if (stockValue !== undefined) {
+  const user = db.get('users')
+    .find((item) => item.id === body.userId);
+
+  const { stocks } = user.value();
+  const index = stocks.findIndex((item) => String(item.symbol) === body.symbol);
+
+  if (index !== -1) {
     if (body.type === 'buy') {
-      stockValue.middlePrice = (stockValue.count * stockValue.middlePrice + body.count * body.price)
-        / (stockValue.count + body.count);
-      stockValue.count += body.count;
+      stocks[index].middlePrice =
+        (stocks[index].count * stocks[index].middlePrice + body.count * body.price)
+        / (stocks[index].count + body.count);
+      stocks[index].count += body.count;
     } else {
-      stockValue.middlePrice = (stockValue.count * stockValue.middlePrice - body.count * body.price)
-        / (stockValue.count - body.count);
-      stockValue.count -= body.count;
+      stocks[index].middlePrice = (stocks[index].count * stocks[index].middlePrice - body.count * body.price)
+        / (stocks[index].count - body.count);
+      stocks[index].count -= body.count;
     }
     try {
-      stock.assign(stockValue).write();
+      if(stocks[index].count === 0){
+        stocks.splice(index, 1);
+      }
+      user.assign({ stocks: stocks })
+        .write();
     } catch (err) {
       throw new Error(err);
     }
     res.json({
       status: 'OK',
-      data: stock
+      data: stocks[index]
     });
   } else {
     const newStock = {
       symbol: body.symbol,
       count: body.count,
       middlePrice: body.price,
-      profile: db.get('stocks')
-        .find((item) => item.symbol === body.symbol).value().profile
     };
     try {
-      db.get('userStocks')
-        .push(newStock)
+      stocks.push(newStock);
+      user.assign({ stocks: stocks })
         .write();
     } catch (err) {
       throw new Error(err);
@@ -101,44 +141,20 @@ router.post('/', (req, res, next) => {
       data: newStock
     });
   }
+
+  const { transactions } = user.value();
   const nowDate = new Date();
   const newTransaction = {
     symbol: body.symbol,
     transactionCount: body.count,
     date: nowDate,
-    middlePrice: body.price,
+    transactionPrice: body.price,
     type: body.type,
-    profile: db.get('stocks')
-      .find((item) => item.symbol === body.symbol).value().profile
+    profile: {}
   };
-  db.get('transactionHistory')
-    .push(newTransaction)
+  transactions.push(newTransaction);
+  user.assign({ transactions: transactions })
     .write();
 });
-
-/*router.post('/search', (req, res, next) => {
-  const { body } = req;
-
-  const stockShema = {
-    type: 'object',
-    properties: {
-      value: { type: 'string' },
-    },
-    required: ['value'],
-    additionalProperties: false
-  };
-
-  const validatorResult = validate(body, stockShema);
-  if (!validatorResult.valid) {
-    return next(new Error('INVALID_JSON_OR_API_FORMAT'));
-  }
-  const data = db.get('userStocks')
-    .filter((stock) => stock.symbol.toLowerCase().indexOf(body.value.toLowerCase()) !== -1 ||
-      stock.profile.companyName.toLowerCase().indexOf(body.value.toLowerCase()) !== -1);
-  res.json({
-    status: 'OK',
-    data: data
-  });
-});*/
 
 module.exports = router;

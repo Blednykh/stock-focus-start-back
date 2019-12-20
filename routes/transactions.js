@@ -1,23 +1,43 @@
 const express = require('express');
-const { validate } = require('jsonschema');
-const shortid = require('shortid');
 const db = require('../db/db');
 const router = express.Router();
-const axios = require('axios');
-
 
 router.get('/', (req, res, next) => {
-  const {offset, name} = req.query;
+  const { offset, name, userId } = req.query;
   let transactions;
+  let user = db.get('users')
+    .find((item) => item.id === userId);
   if (!name || name === '') {
-    transactions = db.get('transactionHistory')
+    transactions = user.value()
+      .transactions
       .filter((item, id) => id >= offset && id < Number(offset) + 10);
   } else {
-    transactions = db.get('transactionHistory')
-      .filter((transaction) => transaction.symbol.toLowerCase().indexOf(name.toLowerCase()) !== -1 ||
-        transaction.profile.companyName.toLowerCase().indexOf(name.toLowerCase()) !== -1)
+    transactions = user.value()
+      .transactions
+      .filter((transaction) => transaction.symbol.toLowerCase()
+          .indexOf(name.toLowerCase()) !== -1 ||
+        transaction.profile.companyName.toLowerCase()
+          .indexOf(name.toLowerCase()) !== -1)
       .filter((item, id) => id >= offset && id < Number(offset) + 10);
   }
+
+  transactions = transactions.map((item) => {
+    const stock = db.get('stocks')
+      .find((stocksItem) => stocksItem.symbol === item.symbol)
+      .value().profile;
+    return {
+      ...item,
+      profile: {
+        companyName: stock.companyName,
+        image: stock.image,
+        description: stock.description,
+        changes: stock.changes,
+        changesPercentage: stock.changesPercentage,
+        price: stock.price
+      }
+    };
+  });
+
   res.json({
     status: 'OK',
     data: transactions

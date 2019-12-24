@@ -14,10 +14,13 @@ router.get('/', (req, res, next) => {
   } else {
     transactions = user.value()
       .transactions
-      .filter((transaction) => transaction.symbol.toLowerCase()
-          .indexOf(name.toLowerCase()) !== -1 ||
-        transaction.profile.companyName.toLowerCase()
-          .indexOf(name.toLowerCase()) !== -1)
+      .filter((transaction) =>
+        transaction.symbol.toLowerCase().indexOf(name.toLowerCase()) !== -1 ||
+        db.get('stocks')
+          .find((stocksItem) => stocksItem.symbol === transaction.symbol)
+          .value().profile.companyName.toLowerCase()
+          .indexOf(name.toLowerCase()) !== -1
+      )
       .filter((item, id) => id >= offset && id < Number(offset) + 10);
   }
 

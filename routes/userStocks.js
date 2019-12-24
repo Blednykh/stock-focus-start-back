@@ -3,9 +3,7 @@ const { validate } = require('jsonschema');
 const db = require('../db/db');
 const router = express.Router();
 
-
 router.get('/', (req, res, next) => {
-
   const { offset, name, userId } = req.query;
   let stocks;
   let user = db.get('users')
@@ -17,10 +15,13 @@ router.get('/', (req, res, next) => {
   } else {
     stocks = user.value()
       .stocks
-      .filter((stock) => stock.symbol.toLowerCase()
-          .indexOf(name.toLowerCase()) !== -1 ||
-        stock.profile.companyName.toLowerCase()
-          .indexOf(name.toLowerCase()) !== -1)
+      .filter((stock) =>
+        stock.symbol.toLowerCase().indexOf(name.toLowerCase()) !== -1 ||
+        db.get('stocks')
+          .find((stocksItem) => stocksItem.symbol === stock.symbol)
+          .value().profile.companyName.toLowerCase()
+          .indexOf(name.toLowerCase()) !== -1
+       )
       .filter((item, id) => id >= offset && id < Number(offset) + 10);
   }
   stocks = stocks.map((item) => {
